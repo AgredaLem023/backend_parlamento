@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+from fastapi import FastAPI
 
 
 app = FastAPI()
@@ -32,6 +33,10 @@ class EventBooking(BaseModel):
     attendees: int
     organizer: str
     contactEmail: str
+
+@app.get("/")
+def read_root():
+    return {"message": "Backend is running!"}
 
 @app.post("/api/book-event")
 def book_event(booking: EventBooking):
