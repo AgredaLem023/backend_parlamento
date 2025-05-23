@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: backend-parlamento
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend_p.main:app --host 0.0.0.0 --port $PORT
