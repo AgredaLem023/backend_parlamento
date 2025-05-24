@@ -17,7 +17,7 @@ app.mount("/events", StaticFiles(directory="public/events"), name="events")
 # Allow requests from your frontend (adjust the origins as needed)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://parlamento-frontend.onrender.com", "https://*.onrender.com","https://www.parlamento.com.bo/"],
+    allow_origins=["http://localhost:3000", "https://parlamento-frontend.onrender.com", "https://*.onrender.com","https://www.parlamento.com.bo"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
