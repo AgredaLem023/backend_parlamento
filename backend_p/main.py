@@ -6,6 +6,8 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 from fastapi import FastAPI
+import gspread
+from google.oauth2.service_account import Credentials
 
 
 app = FastAPI()
@@ -350,7 +352,19 @@ def get_event(event_id: str):
 
 @app.post("/api/store-user")
 def store_user(user: CaptivePortalUser):
-    # Here you would store the user in a database
-    # For now, just print/log and return success
-    print(user.dict())
-    return {"status": "success", "message": "User stored"}
+    # Google Sheets setup
+    SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+    SERVICE_ACCOUNT_FILE = 'backend_p/credentials.json'  # Adjust path as needed
+
+    creds = Credentials.from_service_account_file(
+        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    gc = gspread.authorize(creds)
+
+    # Open your sheet by name or by key
+    sh = gc.open("YOUR_SHEET_NAME")  # Or gc.open_by_key("SHEET_KEY")
+    worksheet = sh.sheet1  # Or sh.worksheet("Sheet1")
+
+    # Append the data as a new row
+    worksheet.append_row([user.fullName, user.email, user.uniqueId])
+
+    return {"status": "success", "message": "User stored in Google Sheets"}
