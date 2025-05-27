@@ -34,6 +34,11 @@ class EventBooking(BaseModel):
     organizer: str
     contactEmail: str
 
+class CaptivePortalUser(BaseModel):
+    fullName: str
+    email: str
+    uniqueId: str
+
 @app.get("/")
 def read_root():
     return {"message": "Backend is running!"}
@@ -342,3 +347,10 @@ def get_event(event_id: str):
         if event["id"] == event_id:
             return event
     return {"detail": "Event not found"}, 404
+
+@app.post("/api/store-user")
+def store_user(user: CaptivePortalUser):
+    # Here you would store the user in a database
+    # For now, just print/log and return success
+    print(user.dict())
+    return {"status": "success", "message": "User stored"}
