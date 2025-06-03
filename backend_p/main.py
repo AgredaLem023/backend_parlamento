@@ -57,8 +57,8 @@ conf = ConnectionConfig(
     MAIL_FROM=os.environ.get("MAIL_FROM"),
     MAIL_PORT=int(os.environ.get("MAIL_PORT", 587)),
     MAIL_SERVER=os.environ.get("MAIL_SERVER", "smtp.gmail.com"),
-    MAIL_TLS=os.environ.get("MAIL_TLS", "True") == "True",
-    MAIL_SSL=os.environ.get("MAIL_SSL", "False") == "True",
+    MAIL_STARTTLS=os.environ.get("MAIL_STARTTLS", "True") == "True",
+    MAIL_SSL_TLS=os.environ.get("MAIL_SSL_TLS", "False") == "True",
     USE_CREDENTIALS=os.environ.get("USE_CREDENTIALS", "True") == "True"
 )
 
