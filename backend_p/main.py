@@ -292,13 +292,53 @@ def get_menu():
         }
     }
 
+# --- Uncomment and use this when you switch to Google Sheets for events ---
+
+# from dateutil import parser
+# import gspread
+# from google.oauth2.service_account import Credentials
+
+# def normalize_event_date(date_str):
+#     try:
+#         # Parse the date string (e.g., "2024-07-01")
+#         dt = parser.parse(date_str)
+#         # Return as ISO 8601 string (e.g., "2024-07-01T00:00:00")
+#         return dt.isoformat()
+#     except Exception:
+#         # If parsing fails, return the original string (or handle as needed)
+#         return date_str
+
+# @app.get("/api/events")
+# def get_events():
+#     # Google Sheets setup
+#     SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+#     SERVICE_ACCOUNT_FILE = 'backend_p/credentials.json'  # Adjust path as needed
+#     SHEET_NAME = "YOUR_SHEET_NAME"  # Replace with your sheet name
+
+#     creds = Credentials.from_service_account_file(
+#         SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+#     gc = gspread.authorize(creds)
+#     sh = gc.open(SHEET_NAME)
+#     worksheet = sh.sheet1  # Or sh.worksheet("Sheet1")
+
+#     # Fetch all records as a list of dicts
+#     raw_events = worksheet.get_all_records()
+
+#     # Normalize all event dates to ISO 8601
+#     events = []
+#     for event in raw_events:
+#         event = event.copy()
+#         event["date"] = normalize_event_date(event["date"])
+#         events.append(event)
+#     return events
+
 @app.get("/api/events")
 def get_events():
     return [
         {
             "id": "e1",
             "title": "Bolivian Coffee Tasting Workshop",
-            "date": "May 15, 2025",
+            "date": "2025-05-15T00:00:00",
             "time": "4:00 PM - 6:00 PM",
             "location": "Main Hall",
             "description": "Learn to make Bolivia's famous salteñas from scratch with our head chef. Ingredients and recipes provided.",
@@ -309,7 +349,7 @@ def get_events():
         {
             "id": "e2",
             "title": "Andean Music Performance",
-            "date": "May 20, 2025",
+            "date": "2025-05-20T00:00:00",
             "time": "7:00 PM - 9:00 PM",
             "location": "Outdoor Patio",
             "description": "Experience the rich sounds of traditional Andean music with a live performance featuring panpipes, charango, and other indigenous instruments.",
@@ -320,7 +360,7 @@ def get_events():
         {
             "id": "e3",
             "title": "Bolivian History Book Club",
-            "date": "May 25, 2025",
+            "date": "2025-05-25T00:00:00",
             "time": "6:00 PM - 8:00 PM",
             "location": "Library Corner",
             "description": "This month we're discussing 'The Bolivian Revolution: A Contemporary History' by James Dunkerley. New members welcome!",
@@ -331,7 +371,7 @@ def get_events():
         {
             "id": "e4",
             "title": "Traditional Weaving Exhibition",
-            "date": "June 1-15, 2025",
+            "date": "2025-06-01T00:00:00",
             "time": "10:00 AM - 8:00 PM",
             "location": "Gallery Space",
             "description": "A two-week exhibition showcasing the intricate textile traditions of Bolivia's indigenous communities, featuring works from artisans across the country.",
@@ -342,7 +382,7 @@ def get_events():
         {
             "id": "e5",
             "title": "Bolivian Cooking Class: Salteñas",
-            "date": "June 10, 2025",
+            "date": "2025-06-10T00:00:00",
             "time": "2:00 PM - 5:00 PM",
             "location": "Kitchen",
             "description": "Learn to make Bolivia's famous salteñas from scratch with our head chef. Ingredients and recipes provided.",
@@ -353,7 +393,7 @@ def get_events():
         {
             "id": "e6",
             "title": "Political Discussion: Bolivia's Future",
-            "date": "June 18, 2025",
+            "date": "2025-06-18T00:00:00",
             "time": "6:30 PM - 8:30 PM",
             "location": "Main Hall",
             "description": "A moderated panel discussion with political scientists and community leaders about Bolivia's current challenges and future prospects.",
