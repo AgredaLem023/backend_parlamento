@@ -43,7 +43,6 @@ class EventBooking(BaseModel):
 class CaptivePortalUser(BaseModel):
     fullName: str
     email: str
-    uniqueId: str
 
 class ContactForm(BaseModel):
     name: str
@@ -418,11 +417,9 @@ def get_event(event_id: str):
 
 @app.post("/api/store-user")
 def store_user(user: CaptivePortalUser):
-    # Insert user data into Supabase
     data = {
         "full_name": user.fullName,
-        "email": user.email,
-        "unique_id": user.uniqueId
+        "email": user.email
     }
     response = supabase.table("captive_portal_users").insert(data).execute()
     if response.status_code == 201:
