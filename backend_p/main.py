@@ -422,10 +422,10 @@ def store_user(user: CaptivePortalUser):
         "email": user.email
     }
     response = supabase.table("captive_portal_users").insert(data).execute()
-    if response.status_code == 201:
+    if response.error is None:
         return {"status": "success", "message": "User stored in Supabase"}
     else:
-        return {"status": "error", "message": "Failed to store user", "details": response.data}
+        return {"status": "error", "message": "Failed to store user", "details": str(response.error)}
 
 @app.post("/api/contact")
 async def contact(form: ContactForm):
