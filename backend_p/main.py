@@ -8,6 +8,9 @@ from typing import Optional
 from fastapi import FastAPI
 import gspread
 from google.oauth2.service_account import Credentials
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+from pydantic import EmailStr
+import os
 
 
 app = FastAPI()
@@ -40,6 +43,24 @@ class CaptivePortalUser(BaseModel):
     fullName: str
     email: str
     uniqueId: str
+
+class ContactForm(BaseModel):
+    name: str
+    email: EmailStr
+    phone: str
+    subject: str
+    message: str
+
+conf = ConnectionConfig(
+    MAIL_USERNAME=os.environ.get("MAIL_USERNAME"),
+    MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD"),
+    MAIL_FROM=os.environ.get("MAIL_FROM"),
+    MAIL_PORT=int(os.environ.get("MAIL_PORT", 587)),
+    MAIL_SERVER=os.environ.get("MAIL_SERVER", "smtp.gmail.com"),
+    MAIL_TLS=os.environ.get("MAIL_TLS", "True") == "True",
+    MAIL_SSL=os.environ.get("MAIL_SSL", "False") == "True",
+    USE_CREDENTIALS=os.environ.get("USE_CREDENTIALS", "True") == "True"
+)
 
 @app.get("/")
 def read_root():
@@ -368,3 +389,21 @@ def store_user(user: CaptivePortalUser):
     worksheet.append_row([user.fullName, user.email, user.uniqueId])
 
     return {"status": "success", "message": "User stored in Google Sheets"}
+
+@app.post("/api/contact")
+async def contact(form: ContactForm):
+    message = MessageSchema(
+        subject=f"Nuevo mensaje de contacto: {form.subject}",
+        recipients=["sergioagreda21@outlook.com"],  # Your email
+        body=f"""
+        Nombre: {form.name}
+        Email: {form.email}
+        Teléfono: {form.phone}
+        Asunto: {form.subject}
+        Mensaje: {form.message}
+        """,
+        subtype="plain"
+    )
+    fm = FastMail(conf)
+    await fm.send_message(message)
+    return {"status": "success", "message": "Email sent"}
