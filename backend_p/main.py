@@ -11,6 +11,7 @@ from google.oauth2.service_account import Credentials
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from pydantic import EmailStr
 import os
+from supabase import create_client, Client
 
 
 app = FastAPI()
@@ -61,6 +62,10 @@ conf = ConnectionConfig(
     MAIL_SSL_TLS=os.environ.get("MAIL_SSL_TLS", "False") == "True",
     USE_CREDENTIALS=os.environ.get("USE_CREDENTIALS", "True") == "True"
 )
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 @app.get("/")
 def read_root():
@@ -413,22 +418,17 @@ def get_event(event_id: str):
 
 @app.post("/api/store-user")
 def store_user(user: CaptivePortalUser):
-    # Google Sheets setup
-    SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-    SERVICE_ACCOUNT_FILE = 'backend_p/credentials.json'  # Adjust path as needed
-
-    creds = Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-    gc = gspread.authorize(creds)
-
-    # Open your sheet by name or by key
-    sh = gc.open("YOUR_SHEET_NAME")  # Or gc.open_by_key("SHEET_KEY")
-    worksheet = sh.sheet1  # Or sh.worksheet("Sheet1")
-
-    # Append the data as a new row
-    worksheet.append_row([user.fullName, user.email, user.uniqueId])
-
-    return {"status": "success", "message": "User stored in Google Sheets"}
+    # Insert user data into Supabase
+    data = {
+        "full_name": user.fullName,
+        "email": user.email,
+        "unique_id": user.uniqueId
+    }
+    response = supabase.table("captive_portal_users").insert(data).execute()
+    if response.status_code == 201:
+        return {"status": "success", "message": "User stored in Supabase"}
+    else:
+        return {"status": "error", "message": "Failed to store user", "details": response.data}
 
 @app.post("/api/contact")
 async def contact(form: ContactForm):
