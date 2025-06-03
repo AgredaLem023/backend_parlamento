@@ -1,5 +1,5 @@
 # backend_p/main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware 
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -447,3 +447,29 @@ async def contact(form: ContactForm):
     fm = FastMail(conf)
     await fm.send_message(message)
     return {"status": "success", "message": "Email sent"}
+
+@app.post("/api/book-event-email")
+async def book_event_email(data: dict, background_tasks: BackgroundTasks):
+    # Compose the email body
+    body = f"""
+    Nueva solicitud de reserva de evento:
+
+    Nombre del evento: {data.get('eventName')}
+    Descripción: {data.get('description')}
+    Fecha: {data.get('date')}
+    Hora de inicio: {data.get('startTime')}
+    Hora de finalización: {data.get('endTime')}
+    Número de asistentes: {data.get('attendees')}
+    Organizador: {data.get('organizer')}
+    Correo de contacto: {data.get('contactEmail')}
+    """
+
+    message = MessageSchema(
+        subject="Nueva reserva de evento desde la web",
+        recipients=["sergioagreda21@outlook.com"],  # Change to manager's email
+        body=body,
+        subtype="plain"
+    )
+    fm = FastMail(conf)
+    background_tasks.add_task(fm.send_message, message)
+    return {"status": "success", "message": "Solicitud enviada por correo"}
