@@ -485,7 +485,7 @@ def store_user(user: CaptivePortalUser):
 async def contact(form: ContactForm):
     message = MessageSchema(
         subject=f"Nuevo mensaje de contacto: {form.subject}",
-        recipients=["sergioagreda21@outlook.com"],  # Your email
+        recipients=["claudia@parlamento.com.bo"],  # Your email
         body=f"""
         Nombre: {form.name}
         Email: {form.email}
