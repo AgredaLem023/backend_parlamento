@@ -229,7 +229,7 @@ def get_menu():
                     "Cerdo bañado en velouté de ají amarillo con encurtidos de zanahoria, cebolla y tomate.",
                     "price": "66 Bs",
                     "image": "/menu/cocina_de_autor/domitila.jpg",
-                    "tags": "[Auténtico, Sandwich]",
+                    "tags": ["Auténtico", "Sandwich"],
                     "historical": "Inspirado en la fuerza y el carácter de Domitila Barrios de Chungara, figura emblemáticas de la resistencia obrera y femenina en Bolivia.",
                 },
                 {
@@ -239,7 +239,7 @@ def get_menu():
                     "Bife ancho con queso criollo gratinado, rúcula, cebolla y pimiento caramelizados, mayonesa de ají de padilla.",
                     "price": "66 Bs",
                     "image": "/menu/menu_placeholder.png",
-                    "tags": "[Sandwich]",
+                    "tags": ["Sandwich"],
                     "historical": "Incahuasi, que en quechua significa 'la casa del Inca'",
                 },
                 {
@@ -248,7 +248,7 @@ def get_menu():
                     "description": "Anticucho salteado, lechuga suiza, pimiento morrón, choclo y salsa de maní ahumada",
                     "price": "66 Bs",
                     "image": "/menu/cocina_de_autor/gran_poder.jpg",
-                    "tags": "[Sandwich]",
+                    "tags": ["Sandwich"],
                     "historical": "Inspirado en la fiesta mayor de los Andes, una explosión de identidad, devoción y cultura popular que cada año transforma las calles de La Paz.",
                 },
                 {
@@ -257,7 +257,7 @@ def get_menu():
                     "description": "Pollo frito bañado en salsa barbacoa, coleslaw, brotes y semillas de sésamo.",
                     "price": "66 Bs",
                     "image": "/menu/cocina_de_autor/crispy_colonial.jpg",
-                    "tags": "[Sandwich]",
+                    "tags": ["Sandwich"],
                     "historical": "Inspirado en la Colonia, una época de imposiciones, contrastes y resistencias en Bolivia.",
                 },
                 {
@@ -266,7 +266,7 @@ def get_menu():
                     "description": "Desayuno clásico con pan baguette, mantequilla y mermelada, huevos revueltos cubiertos con miel, bowl de yogurt con frutillas y granola. Incluye una bebida fria y caliente",
                     "price": "70 Bs",
                     "image": "/menu/cocina_de_autor/neo_liberal.png",
-                    "tags": "[Desayuno]",
+                    "tags": ["Desayuno"],
                     "historical": "El neoliberalismo es una corriente de pensamiento económico y político que enfatiza la importancia del libre mercado y la minimización de la intervención estatal en la economía.",
                 },
                 {
@@ -275,7 +275,7 @@ def get_menu():
                     "description": "Salsa de tomate casera con notas ahumadas, huevo pochado, chorizo chuquisaqueño, tocino y bocconcinos de queso criollo acompañado con tostadas.",
                     "price": "60 Bs",
                     "image": "/menu/cocina_de_autor/pachacuti.jpg",
-                    "tags": "[Desayuno]",
+                    "tags": ["Desayuno"],
                     "historical": "Noveno gobernante del Estado inca, y quien lo gobernó en su expansión desde un curacazgo regional hasta convertirse en un imperio.",
                 },
                 {
@@ -284,7 +284,7 @@ def get_menu():
                     "description": "Pan campesino con queso crema de paprika, rodajas de palta, huevos benedictinos con salsa holandesa, bowl de yogurt con frutas y granola",
                     "price": "68 Bs",
                     "image": "/menu/cocina_de_autor/compadre.jpg",
-                    "tags": "[Desayuno]",
+                    "tags": ["Desayuno"],
                     "historical": "Persona con quien se ha establecido un lazo de compadrazgo, generalmente a través de un bautizo, primera comunión o, en algunos casos, una boda",
                 },
                 {
@@ -293,7 +293,7 @@ def get_menu():
                     "description": "Dos tostadas de pan campesino, tres tipos de queso, jamón ahumado y cubierto con huevo frito.",
                     "price": "55 Bs",
                     "image": "/menu/cocina_de_autor/el_fundido_del_lib.jpg",
-                    "tags": "[Desayuno]",
+                    "tags": ["Desayuno"],
                     "historical": "Estatua ecuestre de Simón Bolívar, una escultura de bronce fundido ubicada en la Plaza Bolívar de Caracas.",
                 },
                 {
