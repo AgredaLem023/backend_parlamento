@@ -12,7 +12,12 @@ from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from pydantic import EmailStr
 import os
 from supabase import create_client, Client
+from dateutil import parser
+import json
+from dotenv import load_dotenv
 
+# Load environment variables from .env file
+load_dotenv()
 
 app = FastAPI()
 
@@ -350,48 +355,114 @@ def get_menu():
         }
     }
 
-# --- Uncomment and use this when you switch to Google Sheets for events ---
+# --- Google Sheets Events Implementation ---
+def normalize_event_date(date_str):
+    try:
+        # Parse the date string (e.g., "2024-07-01" or "2024-07-01T00:00:00")
+        dt = parser.parse(date_str)
+        # Return as ISO 8601 string (e.g., "2024-07-01T00:00:00")
+        return dt.isoformat()
+    except Exception:
+        # If parsing fails, return the original string (or handle as needed)
+        return date_str
 
-# from dateutil import parser
-# import gspread
-# from google.oauth2.service_account import Credentials
+def convert_google_drive_link(drive_url):
+    """Convert Google Drive share link to direct image URL"""
+    try:
+        # Extract file ID from various Google Drive URL formats
+        if "/file/d/" in drive_url:
+            file_id = drive_url.split("/file/d/")[1].split("/")[0]
+        elif "id=" in drive_url:
+            file_id = drive_url.split("id=")[1].split("&")[0]
+        else:
+            return drive_url  # If we can't parse it, return original
+        
+        # Return direct image URL
+        return f"https://drive.google.com/uc?export=view&id={file_id}"
+    except Exception:
+        return drive_url  # If conversion fails, return original
 
-# def normalize_event_date(date_str):
-#     try:
-#         # Parse the date string (e.g., "2024-07-01")
-#         dt = parser.parse(date_str)
-#         # Return as ISO 8601 string (e.g., "2024-07-01T00:00:00")
-#         return dt.isoformat()
-#     except Exception:
-#         # If parsing fails, return the original string (or handle as needed)
-#         return date_str
-
-# @app.get("/api/events")
-# def get_events():
-#     # Google Sheets setup
-#     SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-#     SERVICE_ACCOUNT_FILE = 'backend_p/credentials.json'  # Adjust path as needed
-#     SHEET_NAME = "YOUR_SHEET_NAME"  # Replace with your sheet name
-
-#     creds = Credentials.from_service_account_file(
-#         SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-#     gc = gspread.authorize(creds)
-#     sh = gc.open(SHEET_NAME)
-#     worksheet = sh.sheet1  # Or sh.worksheet("Sheet1")
-
-#     # Fetch all records as a list of dicts
-#     raw_events = worksheet.get_all_records()
-
-#     # Normalize all event dates to ISO 8601
-#     events = []
-#     for event in raw_events:
-#         event = event.copy()
-#         event["date"] = normalize_event_date(event["date"])
-#         events.append(event)
-#     return events
+def get_google_sheets_credentials():
+    """Create credentials from environment variables"""
+    try:
+        # Create credentials dict from environment variables
+        credentials_info = {
+            "type": os.environ.get("GOOGLE_ACCOUNT_TYPE", "service_account"),
+            "project_id": os.environ.get("GOOGLE_PROJECT_ID"),
+            "private_key_id": os.environ.get("GOOGLE_PRIVATE_KEY_ID"),
+            "private_key": os.environ.get("GOOGLE_PRIVATE_KEY").replace('\\n', '\n') if os.environ.get("GOOGLE_PRIVATE_KEY") else None,
+            "client_email": os.environ.get("GOOGLE_CLIENT_EMAIL"),
+            "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
+            "auth_uri": os.environ.get("GOOGLE_AUTH_URI", "https://accounts.google.com/o/oauth2/auth"),
+            "token_uri": os.environ.get("GOOGLE_TOKEN_URI", "https://oauth2.googleapis.com/token"),
+            "auth_provider_x509_cert_url": os.environ.get("GOOGLE_AUTH_PROVIDER_X509_CERT_URL", "https://www.googleapis.com/oauth2/v1/certs"),
+            "client_x509_cert_url": os.environ.get("GOOGLE_CLIENT_X509_CERT_URL"),
+            "universe_domain": os.environ.get("GOOGLE_UNIVERSE_DOMAIN", "googleapis.com")
+        }
+        
+        # Check if all required fields are present
+        required_fields = ["project_id", "private_key", "client_email"]
+        for field in required_fields:
+            if not credentials_info.get(field):
+                raise ValueError(f"Missing required Google Sheets credential: {field}")
+        
+        return credentials_info
+    except Exception as e:
+        print(f"Error creating Google Sheets credentials: {e}")
+        return None
 
 @app.get("/api/events")
 def get_events():
+    # Try to get events from Google Sheets, fallback to hardcoded if it fails
+    try:
+        # Google Sheets setup
+        SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+        SHEET_NAME = os.environ.get("GOOGLE_SHEET_NAME", "Parlamento Events")  # Set this in your env vars
+        
+        # Get credentials from environment variables
+        credentials_info = get_google_sheets_credentials()
+        if not credentials_info:
+            raise Exception("Failed to get Google Sheets credentials")
+        
+        # Create credentials from the info dict
+        creds = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
+        gc = gspread.authorize(creds)
+        sh = gc.open(SHEET_NAME)
+        worksheet = sh.worksheet("events_data")  # Using your specific worksheet name
+        
+        # Fetch all records as a list of dicts
+        raw_events = worksheet.get_all_records()
+        
+        # Normalize all event dates to ISO 8601 and ensure proper data types
+        events = []
+        for event in raw_events:
+            event = event.copy()
+            event["date"] = normalize_event_date(str(event["date"])) if event.get("date") else ""
+            # Ensure capacity is an integer
+            if event.get("capacity"):
+                try:
+                    event["capacity"] = int(event["capacity"])
+                except (ValueError, TypeError):
+                    event["capacity"] = 0
+            # Convert Google Drive share links to direct image URLs
+            if event.get("image") and "drive.google.com" in str(event["image"]):
+                event["image"] = convert_google_drive_link(str(event["image"]))
+            events.append(event)
+        
+        print(f"Successfully fetched {len(events)} events from Google Sheets")
+        return events
+        
+    except Exception as e:
+        print(f"Error fetching from Google Sheets: {e}")
+        print("Falling back to hardcoded events...")
+        # Return hardcoded events as fallback
+        return get_hardcoded_events()
+
+def get_hardcoded_events():
+    """Fallback hardcoded events (your current implementation)"""
+
+def get_hardcoded_events():
+    """Fallback hardcoded events (your current implementation)"""
     return [
         {
             "id": "e1",
