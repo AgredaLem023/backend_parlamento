@@ -417,7 +417,8 @@ def get_events():
     try:
         # Google Sheets setup
         SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-        SHEET_NAME = os.environ.get("GOOGLE_SHEET_NAME", "Parlamento Events")  # Set this in your env vars
+        SHEET_ID = os.environ.get("GOOGLE_SHEET_ID")
+        WORKSHEET_NAME = os.environ.get("GOOGLE_WORKSHEET_NAME", "events_data")
         
         # Get credentials from environment variables
         credentials_info = get_google_sheets_credentials()
@@ -427,8 +428,8 @@ def get_events():
         # Create credentials from the info dict
         creds = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
         gc = gspread.authorize(creds)
-        sh = gc.open(SHEET_NAME)
-        worksheet = sh.worksheet("events_data")  # Using your specific worksheet name
+        sh = gc.open_by_key(SHEET_ID)
+        worksheet = sh.worksheet(WORKSHEET_NAME)
         
         # Fetch all records as a list of dicts
         raw_events = worksheet.get_all_records()
