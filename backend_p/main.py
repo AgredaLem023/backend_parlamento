@@ -1,7 +1,8 @@
 # backend_p/main.py
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware 
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
@@ -15,6 +16,8 @@ from supabase import create_client, Client
 from dateutil import parser
 import json
 from dotenv import load_dotenv
+import httpx
+import re
 
 # Load environment variables from .env file
 load_dotenv()
@@ -607,3 +610,51 @@ async def book_event_email(data: dict, background_tasks: BackgroundTasks):
     fm = FastMail(conf)
     background_tasks.add_task(fm.send_message, message)
     return {"status": "success", "message": "Solicitud enviada por correo"}
+
+@app.get("/api/image/{file_id}")
+async def get_drive_image(file_id: str):
+    """Proxy endpoint to serve Google Drive images, bypassing CORS restrictions"""
+    try:
+        # Validate file_id format (basic security check)
+        if not re.match(r'^[a-zA-Z0-9_-]+$', file_id):
+            raise HTTPException(status_code=400, detail="Invalid file ID format")
+        
+        # Construct Google Drive direct download URL
+        drive_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+        
+        # Make request to Google Drive with proper headers
+        async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+            response = await client.get(
+                drive_url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                }
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=404, detail="Image not found")
+            
+            # Get content type from response, default to image/jpeg if not specified
+            content_type = response.headers.get("content-type", "image/jpeg")
+            
+            # Ensure it's an image content type
+            if not content_type.startswith("image/"):
+                content_type = "image/jpeg"
+            
+            # Return the image data as a streaming response
+            return StreamingResponse(
+                iter([response.content]),
+                media_type=content_type,
+                headers={
+                    "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
+                    "Access-Control-Allow-Origin": "*",
+                }
+            )
+            
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Timeout fetching image")
+    except httpx.RequestError:
+        raise HTTPException(status_code=503, detail="Error fetching image")
+    except Exception as e:
+        print(f"Error proxying image {file_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
