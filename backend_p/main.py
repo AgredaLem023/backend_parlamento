@@ -385,7 +385,18 @@ def convert_google_drive_link(drive_url):
 def get_google_sheets_credentials():
     """Create credentials from environment variables"""
     try:
-        # Create credentials dict from environment variables
+        # First, try to get credentials from a single JSON environment variable
+        google_credentials_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+        if google_credentials_json:
+            try:
+                credentials_info = json.loads(google_credentials_json)
+                print("Successfully loaded Google Sheets credentials from JSON environment variable")
+                return credentials_info
+            except json.JSONDecodeError as e:
+                print(f"Error parsing GOOGLE_CREDENTIALS_JSON: {e}")
+                print("Falling back to individual environment variables...")
+        
+        # Fallback to individual environment variables (backwards compatibility)
         credentials_info = {
             "type": os.environ.get("GOOGLE_ACCOUNT_TYPE", "service_account"),
             "project_id": os.environ.get("GOOGLE_PROJECT_ID"),

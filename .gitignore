@@ -18,3 +18,10 @@ venv_bp/
 
 # Windows
 Thumbs.db
+
+# JSON files
+*.json
+backend_parlamento/backend_p/*.json
+
+# Google Sheets credentials
+backend_parlamento/backend_p/parlamento-464203-3502654da15d.json
