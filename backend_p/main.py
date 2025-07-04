@@ -680,7 +680,7 @@ async def book_event_email(data: dict, background_tasks: BackgroundTasks):
 
     message = MessageSchema(
         subject="Nueva reserva de evento desde la web",
-        recipients=["sergioagreda21@outlook.com"], #["claudia@parlamento.com.bo"],  # Change to manager's email
+        recipients=["claudia@parlamento.com.bo"],  # Change to manager's email
         body=body,
         subtype="plain"
     )
