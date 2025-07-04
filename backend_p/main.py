@@ -18,6 +18,7 @@ import json
 from dotenv import load_dotenv
 import httpx
 import re
+import random
 
 # Load environment variables from .env file
 load_dotenv()
@@ -73,6 +74,10 @@ conf = ConnectionConfig(
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Google Sheets for event bookings
+BOOKING_SHEET_ID = os.environ.get("BOOKING_SHEET_ID")
+BOOKING_WORKSHEET_NAME = os.environ.get("BOOKING_WORKSHEET_NAME", "solicitudes_de_reserva_eventos")
 
 @app.get("/")
 def read_root():
@@ -476,6 +481,66 @@ def get_events():
 def get_hardcoded_events():
     """Fallback hardcoded events (your current implementation)"""
 
+def log_event_booking_to_sheets(booking_data):
+    """Log event booking request to Google Sheets"""
+    try:
+        if not BOOKING_SHEET_ID:
+            print("BOOKING_SHEET_ID not configured, skipping Google Sheets logging")
+            return False
+        
+        # Get credentials from environment variables
+        credentials_info = get_google_sheets_credentials()
+        if not credentials_info:
+            print("Failed to get Google Sheets credentials for booking logging")
+            return False
+        
+        # Create credentials and authorize
+        SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+        creds = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
+        gc = gspread.authorize(creds)
+        
+        # Open the spreadsheet and worksheet
+        sh = gc.open_by_key(BOOKING_SHEET_ID)
+        worksheet = sh.worksheet(BOOKING_WORKSHEET_NAME)
+        
+        # Format the date for better readability
+        formatted_date = booking_data.get('date', '')
+        if formatted_date:
+            try:
+                date_obj = parser.parse(formatted_date)
+                formatted_date = date_obj.strftime('%m/%d/%Y')
+            except Exception:
+                formatted_date = booking_data.get('date', '')
+        
+        # Create unique ID (timestamp + random component)
+        unique_id = f"EVT_{datetime.now().strftime('%Y%m%d%H%M%S')}_{random.randint(100, 999)}"
+        
+        # Prepare row data according to table structure
+        row_data = [
+            unique_id,  # A: ID
+            datetime.now().strftime('%m/%d/%Y %H:%M:%S'),  # B: Fecha de Solicitud
+            booking_data.get('eventName', ''),  # C: Nombre del Evento
+            booking_data.get('description', ''),  # D: Descripción
+            formatted_date,  # E: Fecha del Evento
+            booking_data.get('startTime', ''),  # F: Hora de Inicio
+            booking_data.get('endTime', ''),  # G: Hora de Fin
+            booking_data.get('attendees', ''),  # H: Número de Asistentes
+            booking_data.get('organizer', ''),  # I: Organizador
+            booking_data.get('contactEmail', ''),  # J: Correo de Contacto
+            booking_data.get('phoneNumber', ''),  # K: Número de Teléfono
+            'Pendiente'  # L: Estado
+        ]
+        
+        # Append the row to the worksheet
+        worksheet.append_row(row_data)
+        
+        print(f"Successfully logged booking to Google Sheets with ID: {unique_id}")
+        return True
+        
+    except Exception as e:
+        print(f"Error logging booking to Google Sheets: {e}")
+        return False
+
 def get_hardcoded_events():
     """Fallback hardcoded events (your current implementation)"""
     return [
@@ -587,28 +652,44 @@ async def contact(form: ContactForm):
 
 @app.post("/api/book-event-email")
 async def book_event_email(data: dict, background_tasks: BackgroundTasks):
+    # Format the date for better readability
+    formatted_date = data.get('date', '')
+    if formatted_date:
+        try:
+            # Parse the ISO date string and format it as MM/DD/YYYY
+            date_obj = parser.parse(formatted_date)
+            formatted_date = date_obj.strftime('%m/%d/%Y')
+        except Exception:
+            # If parsing fails, keep the original date
+            formatted_date = data.get('date', '')
+    
     # Compose the email body
     body = f"""
     Nueva solicitud de reserva de evento:
 
     Nombre del evento: {data.get('eventName')}
     Descripción: {data.get('description')}
-    Fecha: {data.get('date')}
+    Fecha del evento: {formatted_date}
     Hora de inicio: {data.get('startTime')}
     Hora de finalización: {data.get('endTime')}
     Número de asistentes: {data.get('attendees')}
     Organizador: {data.get('organizer')}
     Correo de contacto: {data.get('contactEmail')}
+    Número de teléfono: {data.get('phoneNumber')}
     """
 
     message = MessageSchema(
         subject="Nueva reserva de evento desde la web",
-        recipients=["claudia@parlamento.com.bo"],  # Change to manager's email
+        recipients=["sergioagreda21@outlook.com"], #["claudia@parlamento.com.bo"],  # Change to manager's email
         body=body,
         subtype="plain"
     )
     fm = FastMail(conf)
     background_tasks.add_task(fm.send_message, message)
+    
+    # Log to Google Sheets in the background
+    background_tasks.add_task(log_event_booking_to_sheets, data)
+    
     return {"status": "success", "message": "Solicitud enviada por correo"}
 
 @app.get("/api/image/{file_id}")
