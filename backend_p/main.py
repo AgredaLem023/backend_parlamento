@@ -79,6 +79,62 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 BOOKING_SHEET_ID = os.environ.get("BOOKING_SHEET_ID")
 BOOKING_WORKSHEET_NAME = os.environ.get("BOOKING_WORKSHEET_NAME", "solicitudes_de_reserva_eventos")
 
+def convert_google_drive_link(drive_url):
+    """Convert Google Drive share link to direct image URL"""
+    try:
+        # Extract file ID from various Google Drive URL formats
+        if "/file/d/" in drive_url:
+            file_id = drive_url.split("/file/d/")[1].split("/")[0]
+        elif "id=" in drive_url:
+            file_id = drive_url.split("id=")[1].split("&")[0]
+        else:
+            return drive_url  # If we can't parse it, return original
+        
+        # Return direct image URL
+        return f"https://drive.google.com/uc?export=view&id={file_id}"
+    except Exception:
+        return drive_url  # If conversion fails, return original
+
+def get_google_sheets_credentials():
+    """Create credentials from environment variables"""
+    try:
+        # First, try to get credentials from a single JSON environment variable
+        google_credentials_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+        if google_credentials_json:
+            try:
+                credentials_info = json.loads(google_credentials_json)
+                print("Successfully loaded Google Sheets credentials from JSON environment variable")
+                return credentials_info
+            except json.JSONDecodeError as e:
+                print(f"Error parsing GOOGLE_CREDENTIALS_JSON: {e}")
+                print("Falling back to individual environment variables...")
+        
+        # Fallback to individual environment variables (backwards compatibility)
+        credentials_info = {
+            "type": os.environ.get("GOOGLE_ACCOUNT_TYPE", "service_account"),
+            "project_id": os.environ.get("GOOGLE_PROJECT_ID"),
+            "private_key_id": os.environ.get("GOOGLE_PRIVATE_KEY_ID"),
+            "private_key": os.environ.get("GOOGLE_PRIVATE_KEY").replace('\\n', '\n') if os.environ.get("GOOGLE_PRIVATE_KEY") else None,
+            "client_email": os.environ.get("GOOGLE_CLIENT_EMAIL"),
+            "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
+            "auth_uri": os.environ.get("GOOGLE_AUTH_URI", "https://accounts.google.com/o/oauth2/auth"),
+            "token_uri": os.environ.get("GOOGLE_TOKEN_URI", "https://oauth2.googleapis.com/token"),
+            "auth_provider_x509_cert_url": os.environ.get("GOOGLE_AUTH_PROVIDER_X509_CERT_URL", "https://www.googleapis.com/oauth2/v1/certs"),
+            "client_x509_cert_url": os.environ.get("GOOGLE_CLIENT_X509_CERT_URL"),
+            "universe_domain": os.environ.get("GOOGLE_UNIVERSE_DOMAIN", "googleapis.com")
+        }
+        
+        # Check if all required fields are present
+        required_fields = ["project_id", "private_key", "client_email"]
+        for field in required_fields:
+            if not credentials_info.get(field):
+                raise ValueError(f"Missing required Google Sheets credential: {field}")
+        
+        return credentials_info
+    except Exception as e:
+        print(f"Error creating Google Sheets credentials: {e}")
+        return None
+
 @app.get("/")
 def read_root():
     return {"message": "Backend is running!"}
@@ -178,6 +234,101 @@ def get_testimonials():
 
 @app.get("/api/menu")
 def get_menu():
+    # Try to get menu from Google Sheets, fallback to hardcoded if it fails
+    try:
+        # Google Sheets setup
+        SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+        SHEET_ID = os.environ.get("GOOGLE_SHEET_ID")
+        MENU_WORKSHEET_NAME = os.environ.get("MENU_WORKSHEET_NAME", "menu_data")
+        
+        # Get credentials from environment variables
+        credentials_info = get_google_sheets_credentials()
+        if not credentials_info:
+            raise Exception("Failed to get Google Sheets credentials")
+        
+        # Create credentials from the info dict
+        creds = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
+        gc = gspread.authorize(creds)
+        sh = gc.open_by_key(SHEET_ID)
+        worksheet = sh.worksheet(MENU_WORKSHEET_NAME)
+        
+        # Fetch all records as a list of dicts
+        raw_menu_items = worksheet.get_all_records()
+        
+        # Transform flat data to nested structure
+        menu = transform_menu_data(raw_menu_items)
+        
+        print(f"Successfully fetched {len(raw_menu_items)} menu items from Google Sheets")
+        return menu
+        
+    except Exception as e:
+        print(f"Error fetching menu from Google Sheets: {e}")
+        print("Falling back to hardcoded menu...")
+        # Return hardcoded menu as fallback
+        return get_hardcoded_menu()
+
+def transform_menu_data(raw_items):
+    """Transform flat Google Sheets data into nested menu structure"""
+    try:
+        # Initialize menu structure
+        menu = {
+            "cafes y bebidas": {
+                "title": "Cafes y Bebidas",
+                "items": []
+            },
+            "autor": {
+                "title": "Cocina de Autor", 
+                "items": []
+            },
+            "pasteleria": {
+                "title": "Pastelería",
+                "items": []
+            }
+        }
+        
+        # Process each item
+        for item in raw_items:
+            # Skip empty rows
+            if not item.get("category_key") or not item.get("item_name"):
+                continue
+            
+            # Get category key
+            category_key = item.get("category_key", "").lower().strip()
+            
+            # Convert tags from comma-separated string to array
+            tags_str = item.get("item_tags", "")
+            tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
+            
+            # Convert Google Drive share links to direct image URLs if needed
+            image_url = item.get("item_image", "")
+            if image_url and "drive.google.com" in image_url:
+                image_url = convert_google_drive_link(image_url)
+            
+            # Create menu item
+            menu_item = {
+                "id": item.get("item_id", ""),
+                "name": item.get("item_name", ""),
+                "description": item.get("item_description", ""),
+                "price": item.get("item_price", ""),
+                "image": image_url,
+                "tags": tags,
+                "historical": item.get("item_historical", "")
+            }
+            
+            # Add to appropriate category
+            if category_key in menu:
+                menu[category_key]["items"].append(menu_item)
+            else:
+                print(f"Warning: Unknown category '{category_key}' for item '{item.get('item_name')}'")
+        
+        return menu
+        
+    except Exception as e:
+        print(f"Error transforming menu data: {e}")
+        raise
+
+def get_hardcoded_menu():
+    """Fallback hardcoded menu (original implementation)"""
     return {
         "cafes y bebidas": {
             "title": "Cafes y Bebidas",
@@ -382,61 +533,6 @@ def normalize_event_date(date_str):
         # If parsing fails, return the original string (or handle as needed)
         return date_str
 
-def convert_google_drive_link(drive_url):
-    """Convert Google Drive share link to direct image URL"""
-    try:
-        # Extract file ID from various Google Drive URL formats
-        if "/file/d/" in drive_url:
-            file_id = drive_url.split("/file/d/")[1].split("/")[0]
-        elif "id=" in drive_url:
-            file_id = drive_url.split("id=")[1].split("&")[0]
-        else:
-            return drive_url  # If we can't parse it, return original
-        
-        # Return direct image URL
-        return f"https://drive.google.com/uc?export=view&id={file_id}"
-    except Exception:
-        return drive_url  # If conversion fails, return original
-
-def get_google_sheets_credentials():
-    """Create credentials from environment variables"""
-    try:
-        # First, try to get credentials from a single JSON environment variable
-        google_credentials_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-        if google_credentials_json:
-            try:
-                credentials_info = json.loads(google_credentials_json)
-                print("Successfully loaded Google Sheets credentials from JSON environment variable")
-                return credentials_info
-            except json.JSONDecodeError as e:
-                print(f"Error parsing GOOGLE_CREDENTIALS_JSON: {e}")
-                print("Falling back to individual environment variables...")
-        
-        # Fallback to individual environment variables (backwards compatibility)
-        credentials_info = {
-            "type": os.environ.get("GOOGLE_ACCOUNT_TYPE", "service_account"),
-            "project_id": os.environ.get("GOOGLE_PROJECT_ID"),
-            "private_key_id": os.environ.get("GOOGLE_PRIVATE_KEY_ID"),
-            "private_key": os.environ.get("GOOGLE_PRIVATE_KEY").replace('\\n', '\n') if os.environ.get("GOOGLE_PRIVATE_KEY") else None,
-            "client_email": os.environ.get("GOOGLE_CLIENT_EMAIL"),
-            "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
-            "auth_uri": os.environ.get("GOOGLE_AUTH_URI", "https://accounts.google.com/o/oauth2/auth"),
-            "token_uri": os.environ.get("GOOGLE_TOKEN_URI", "https://oauth2.googleapis.com/token"),
-            "auth_provider_x509_cert_url": os.environ.get("GOOGLE_AUTH_PROVIDER_X509_CERT_URL", "https://www.googleapis.com/oauth2/v1/certs"),
-            "client_x509_cert_url": os.environ.get("GOOGLE_CLIENT_X509_CERT_URL"),
-            "universe_domain": os.environ.get("GOOGLE_UNIVERSE_DOMAIN", "googleapis.com")
-        }
-        
-        # Check if all required fields are present
-        required_fields = ["project_id", "private_key", "client_email"]
-        for field in required_fields:
-            if not credentials_info.get(field):
-                raise ValueError(f"Missing required Google Sheets credential: {field}")
-        
-        return credentials_info
-    except Exception as e:
-        print(f"Error creating Google Sheets credentials: {e}")
-        return None
 
 @app.get("/api/events")
 def get_events():
