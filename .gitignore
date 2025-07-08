@@ -19,9 +19,14 @@ venv_bp/
 # Windows
 Thumbs.db
 
-# JSON files
+# JSON credential files (ensure all JSON files are excluded for security)
 *.json
-backend_parlamento/backend_p/*.json
+backend_p/*.json
 
-# Google Sheets credentials
-backend_parlamento/backend_p/parlamento-464203-3502654da15d.json
+# Google Sheets credentials (specific pattern for service account files)
+backend_p/parlamento-*.json
+
+modularization_log.txt
+BEGINNER_GUIDE.md
+QUICK_REFERENCE.md
+main_backup.py
